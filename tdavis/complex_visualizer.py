@@ -1,11 +1,13 @@
+__all__ = ['find_patterns', 'build_gudhi_tree', 'CliqueComplex',
+           'ConcurrenceComplex', 'convert_edge_membership_to_node_membership',
+           'IndependenceComplex']
+
+
 import gudhi
 import numpy as np
-from . import data_processing
+from tdavis.data_processing import *
 import linkcom
 import networkx as nx
-
-# agent_handler -> numpy array
-# array history includes processed screen input
 
 
 def find_patterns(data: np.array):
@@ -38,8 +40,8 @@ class CliqueComplex:
         dimension.
         """
         self._data = data
-        self._preprocessed_data = data_processing.bin_time_series(
-                data_processing.pre_process_layer_states(self._data, filter_lowest),
+        self._preprocessed_data = bin_time_series(
+                pre_process_layer_states(self._data, filter_lowest),
                 window_size, method)
         self._distance_matrix = np.abs(np.corrcoef(self._preprocessed_data,
                                                    rowvar=False))
@@ -59,9 +61,9 @@ class ConcurrenceComplex:
         dimension.
         """
         self._data = data
-        self._preprocessed_data = data_processing.binarize_time_series(
-            data_processing.bin_time_series(
-                data_processing.pre_process_layer_states(self._data, filter_lowest),
+        self._preprocessed_data = binarize_time_series(
+            bin_time_series(
+                pre_process_layer_states(self._data, filter_lowest),
                     window_size, method), threshold)
         self.simplex_tree = build_gudhi_tree(find_patterns(self._preprocessed_data))
 
@@ -80,8 +82,8 @@ class IndependenceComplex:
     def __init__(self, data: np.array, filter_lowest=0.2,
                  window_size=5, method='avg'):
         self._data = data
-        self._preprocessed_data = data_processing.bin_time_series(
-                data_processing.pre_process_layer_states(self._data, filter_lowest),
+        self._preprocessed_data = bin_time_series(
+                pre_process_layer_states(self._data, filter_lowest),
                 window_size, method)
         self._correlation_matrix = np.abs(np.corrcoef(self._preprocessed_data,
                                                       rowvar=False))

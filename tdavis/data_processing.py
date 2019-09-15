@@ -1,3 +1,7 @@
+__all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
+           'binarize_time_series']
+
+
 import numpy as np
 import sklearn as sk
 

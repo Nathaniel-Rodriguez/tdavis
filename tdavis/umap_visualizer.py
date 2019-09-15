@@ -1,6 +1,9 @@
+__all__ = ['UMAPAnalysis']
+
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from . import data_processing
+from tdavis.data_processing import *
 import numpy as np
 import umap
 
@@ -15,8 +18,8 @@ class UMAPAnalysis:
         """
         self._n_components = n_components
         self._data = data
-        self._preprocessed_data = data_processing.bin_time_series(
-                data_processing.pre_process_layer_states(
+        self._preprocessed_data = bin_time_series(
+                pre_process_layer_states(
                     self._data, filter_lowest), window_size, method)
 
         self.reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist,
@@ -45,7 +48,7 @@ class UMAPAnalysis:
                        c=cm.Greys(
                            np.linspace(0, 1, self._preprocessed_data.shape[0])),
                        s=100)
-                       
+
 
         plt.gca().set_aspect('equal', 'datalim')
         plt.title('UMAP projection', fontsize=24)
