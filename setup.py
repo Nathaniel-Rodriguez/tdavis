@@ -14,6 +14,6 @@ setup(name='tdavis',
           'scikit-learn',
           'networkx',
           'matplotlib',
-          'linkcom==0.0.1 @ https://github.com/Nathaniel-Rodriguez/linkcom/archive/0.0.1.zip#egg=linkcom-0.0.1'
+          'linkcom @ https://github.com/Nathaniel-Rodriguez/linkcom/archive/0.0.1.zip#egg=linkcom-0.0.1'
       ],
       include_package_data=True)

@@ -49,7 +49,6 @@ class UMAPAnalysis:
                            np.linspace(0, 1, self._preprocessed_data.shape[0])),
                        s=100)
 
-
         plt.gca().set_aspect('equal', 'datalim')
         plt.title('UMAP projection', fontsize=24)
         if filename is None:
