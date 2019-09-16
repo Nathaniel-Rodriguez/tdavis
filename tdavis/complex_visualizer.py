@@ -5,6 +5,7 @@ __all__ = ['find_patterns', 'build_gudhi_tree', 'CliqueComplex',
 
 import gudhi
 import numpy as np
+from matplotlib.pyplot as plt
 from tdavis.data_processing import *
 import linkcom
 import networkx as nx
@@ -31,7 +32,29 @@ def build_gudhi_tree(patterns):
     return tree
 
 
-class CliqueComplex:
+class Complex:
+    def __init__(self, simplex_tree, homology_coeff_field=11):
+        """
+        :param homology_coeff_field: has to be prime int.
+        """
+        self.simplex_tree = simplex_tree
+        self.persistence = self.simplex_tree.persistence(homology_coeff_field)
+
+    def plot_betti_distribution(self, filtration_range=None):
+        if filtration_range is None:
+            betti_dist = self.simplex_tree.persistent_betti_numbers(
+                filtration_range[0], filtration_range[1])
+        else:
+            betti_dist = self.simplex_tree.betti_numbers()
+
+    def plot_persistence_diagram(self, *args, **kwargs):
+        ax = gudhi.plot_persistence_diagram(self.persistence, *args, **kwargs)
+
+    # TODO: add distribution for # max simplices for given filtration
+    # check some papers to see if anyone even uses ones like these, may
+    # just not do it, or just do community detection on the distance matrix
+
+class CliqueComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
                  window_size=5, method="avg", max_edge_length=10,
                  tree_dimension=None):
@@ -48,12 +71,13 @@ class CliqueComplex:
         self.rips_complex = gudhi.RipsComplex(distance_matrix=self._distance_matrix,
                                               max_edge_length=max_edge_length)
         if tree_dimension is None:
-            self.simplex_tree = self.rips_complex.create_simplex_tree()
+            simplex_tree = self.rips_complex.create_simplex_tree()
         else:
-            self.simplex_tree = self.rips_complex.create_simplex_tree(tree_dimension)
+            simplex_tree = self.rips_complex.create_simplex_tree(tree_dimension)
+        super().__init__(simplex_tree)
 
 
-class ConcurrenceComplex:
+class ConcurrenceComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
                  window_size=5, method="avg", threshold=0.5):
         """
@@ -65,7 +89,7 @@ class ConcurrenceComplex:
             bin_time_series(
                 pre_process_layer_states(self._data, filter_lowest),
                     window_size, method), threshold)
-        self.simplex_tree = build_gudhi_tree(find_patterns(self._preprocessed_data))
+        super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data)))
 
 
 def convert_edge_membership_to_node_membership(n, edge_membership):
@@ -78,7 +102,7 @@ def convert_edge_membership_to_node_membership(n, edge_membership):
     return node_membership_matrix
 
 
-class IndependenceComplex:
+class IndependenceComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
                  window_size=5, method='avg'):
         self._data = data
@@ -91,12 +115,16 @@ class IndependenceComplex:
         # TODO: look into determining going from correlation -> graph
         # particularly concerning significance/thresholding
 
-        g = nx.from_numpy_matrix(self._correlation_matrix,
-                                 created_using=nx.DiGraph())
-        # keys=edges and values=community membership, best similarity,
-        # best partition density
-        edge_membership, best_sim, best_part = linkcom.cluster(g, is_weighted=True)
+        self.graph = nx.from_numpy_matrix(self._correlation_matrix,
+                                          created_using=nx.DiGraph())
+        # keys=edges and values=community membership
+        edge_membership, _, _ = linkcom.cluster(g, is_weighted=True)
         self._node_membership = convert_edge_membership_to_node_membership(
             len(g), edge_membership)
         self._non_membership = ~self._node_membership
-        self.simplex_tree = build_gudhi_tree(find_patterns(self._non_membership))
+        super().__init__(build_gudhi_tree(find_patterns(self._non_membership)))
+
+    def write_gexf_to_file(self, filename):
+        # assign communities to nodes (not sure how gephi could handle it)
+        # assign communities to edges
+        # assign out-membership to nodes
