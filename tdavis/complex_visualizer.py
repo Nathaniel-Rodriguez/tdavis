@@ -5,7 +5,7 @@ __all__ = ['find_patterns', 'build_gudhi_tree', 'CliqueComplex',
 
 import gudhi
 import numpy as np
-from matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from tdavis.data_processing import *
 import linkcom
 import networkx as nx
