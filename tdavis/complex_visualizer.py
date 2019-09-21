@@ -16,8 +16,8 @@ def find_patterns(data: np.array):
     :param data: a TxN binary matrix
     """
     patterns = {}
-    for i in range(len(data.shape[0])):
-        indices = tuple(np.nonzero(data[i]))
+    for i in range(data.shape[0]):
+        indices = tuple(np.nonzero(data[i])[0].tolist())
         if indices in patterns:
             patterns[indices] += 1
         else:
@@ -53,6 +53,7 @@ class Complex:
     # TODO: add distribution for # max simplices for given filtration
     # check some papers to see if anyone even uses ones like these, may
     # just not do it, or just do community detection on the distance matrix
+
 
 class CliqueComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
