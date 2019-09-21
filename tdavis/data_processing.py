@@ -1,9 +1,10 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
-           'binarize_time_series']
+           'binarize_time_series', 'plot_state_distribution']
 
 
 import numpy as np
 import sklearn as sk
+import matplotlib.pyplot as plt
 
 
 def flatten_layer(layer_state):
@@ -21,6 +22,7 @@ def pre_process_layer_states(layer_state, filter_lowest=0.2):
     """
     # difference time-series
     differenced_states = layer_state[1:, :] - layer_state[-1:, :]
+
     # calc variance of each neuron
     variances = np.var(differenced_states, axis=0)
     # remove no-variance neurons
@@ -36,7 +38,7 @@ def pre_process_layer_states(layer_state, filter_lowest=0.2):
           " neurons for low activity")
     filtered_states = np.take(filtered_states, chosen, axis=1)
     # standardize whole set
-    scaler = sk.preprocessing.RobustScaler()
+    scaler = sk.preprocessing.StandardScaler()
     scaled_states = scaler.fit_transform(filtered_states)
     return scaled_states
 
@@ -74,3 +76,43 @@ def binarize_time_series(layer_state, threshold):
     :return: binarized matrix of shape TxN
     """
     return sk.preprocessing.binarize(layer_state, threshold)
+
+
+def plot_state_distribution(layer, prefix="test", plot_min_max=True):
+    """
+    Makes a time series plot of the max/min/median/90%/10% quartile ranges
+    :param layer: a TxN matrix, where N is the number of neurons
+    :param prefix: prefix for output file name
+    :param plot_min_max: if True plots min/max values (default: True)
+    :return: None
+    """
+    plt.clf()
+
+    mins = []
+    maxes = []
+    tops = []
+    bots = []
+    centers = []
+    for state in layer:
+
+        # Max, min
+        mins.append(min(state))
+        maxes.append(max(state))
+
+        # Percentile 90, 10, 50
+        tops.append(np.percentile(state, 90))
+        bots.append(np.percentile(state, 10))
+        centers.append(np.percentile(state, 50))
+
+    plt.plot(centers, color="black", marker="None", lw=1, label='median')
+    plt.fill_between(range(len(tops)), tops, bots, color="red", alpha=0.3,
+                     label='10%/90%')
+    if plot_min_max:
+        plt.plot(mins, ls="dotted", marker="None", color="black", lw=1,
+                 label='min/max')
+        plt.plot(maxes, ls="dotted", marker="None", color="black", lw=1)
+    plt.xlim(0, len(tops))
+    plt.legend()
+    plt.savefig(prefix + "_state_distribution.pdf")
+    plt.clf()
+    plt.close()

@@ -125,6 +125,7 @@ class IndependenceComplex(Complex):
         super().__init__(build_gudhi_tree(find_patterns(self._non_membership)))
 
     def write_gexf_to_file(self, filename):
+        pass
         # assign communities to nodes (not sure how gephi could handle it)
         # assign communities to edges
         # assign out-membership to nodes
