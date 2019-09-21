@@ -40,8 +40,10 @@ class UMAPAnalysis:
             ax = fig.add_subplot(111)
             ax.scatter(embedding[:, 0], embedding[:, 1],
                        c=cm.Greys(
-                           np.linspace(0, 1, self._preprocessed_data.shape[0])))
-            ax.plot(embedding[:, 0], embedding[:, 1])
+                           np.linspace(0, 1, self._preprocessed_data.shape[0])),
+                       edgecolors="black")
+            ax.plot(embedding[:, 0], embedding[:, 1], color='black',
+                    ls='dotted', lw=0.5)
         if self._n_components == 3:
             ax = fig.add_subplot(111, projection='3d')
             ax.scatter(embedding[:, 0], embedding[:, 1], embedding[:, 2],
