@@ -55,12 +55,12 @@ def bin_time_series(layer_state, window_size=5, method="avg"):
     binned_state = np.zeros((num_bins, layer_state.shape[1]))
     if method == "avg":
         for i in range(num_bins):
-            binned_state[i, :] = np.mean(layer_state[i * num_bins:(i+1)*num_bins, :],
+            binned_state[i, :] = np.mean(layer_state[i * window_size:(i+1)*window_size, :],
                                          axis=0)
 
     elif method == "max":
         for i in range(num_bins):
-            binned_state[i, :] = np.max(layer_state[i * num_bins:(i+1)*num_bins, :],
+            binned_state[i, :] = np.max(layer_state[i * window_size:(i+1)*window_size, :],
                                         axis=0)
     else:
         raise NotImplementedError
