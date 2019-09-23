@@ -40,15 +40,15 @@ def build_gudhi_tree(patterns):
 
 
 class Complex:
-    def __init__(self, simplex_tree, homology_coeff_field=11,
-                 min_persistence=0.0):
+    def __init__(self, simplex_tree, **kwargs):
         """
         :param homology_coeff_field: has to be prime int.
         """
         self.simplex_tree = simplex_tree
         print("calculating persistence...")
-        self.persistence = self.simplex_tree.persistence(homology_coeff_field,
-                                                         min_persistence)
+        self.persistence = self.simplex_tree.persistence(
+            kwargs.get('homology_coeff_field', 11),
+            kwargs.get('min_persistence', 0.0))
 
     def plot_betti_distribution(self, filtration_range=None):
         if filtration_range is None:
