@@ -1,10 +1,14 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
-           'binarize_time_series', 'plot_state_distribution']
+           'binarize_time_series', 'plot_state_distribution', 'pattern_plot']
 
 
 import numpy as np
 import sklearn as sk
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+
+# TODO: remove neurons with inactive downsteam neighbors
 
 
 def flatten_layer(layer_state):
@@ -40,6 +44,7 @@ def pre_process_layer_states(layer_state, filter_lowest=0.2):
     # standardize whole set
     scaler = sk.preprocessing.StandardScaler()
     scaled_states = scaler.fit_transform(filtered_states)
+    print("\tremaining states:", scaled_states.shape[1])
     return scaled_states
 
 
@@ -64,18 +69,22 @@ def bin_time_series(layer_state, window_size=5, method="avg"):
                                         axis=0)
     else:
         raise NotImplementedError
-
+    print("new time end:", binned_state.shape[0])
     return binned_state
 
 
-def binarize_time_series(layer_state, threshold):
+def binarize_time_series(layer_state, threshold, absolute=False):
     """
     Given a threshold return a binary matrix of 0's or 1's based on threshold
     :param layer_state: TxN matrix where N is the number of neurons.
     :param threshold: threshold above which the value is considered 1.
+    :param absolute: whether to threshold by absolute value (default: False)
     :return: binarized matrix of shape TxN
     """
-    return sk.preprocessing.binarize(layer_state, threshold)
+    if absolute:
+        return sk.preprocessing.binarize(np.abs(layer_state), threshold)
+    else:
+        return sk.preprocessing.binarize(layer_state, threshold)
 
 
 def plot_state_distribution(layer, prefix="test", plot_min_max=True):
@@ -116,3 +125,30 @@ def plot_state_distribution(layer, prefix="test", plot_min_max=True):
     plt.savefig(prefix + "_state_distribution.pdf")
     plt.clf()
     plt.close()
+
+
+def pattern_plot(layer, prefix="test", window=None, xlabel="time",
+                 ylabel="activation"):
+    """
+    :param layer: TxN activation matrix
+    :param prefix: for file name
+    :param xlabel: name for T dimension (default: time)
+    :param ylabel: name for N dimension (default: activation)
+    :return: None
+    """
+    plt.clf()
+    fig, ax = plt.subplots()
+    cmap = mpl.colors.ListedColormap(['w', 'k'])
+    bounds = [0, 0.5, 1]
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    if window is None:
+        ax.imshow(layer.T, interpolation='none', cmap=cmap, norm=norm)
+    else:
+        ax.imshow(layer.T[:, window[0]:window[1]],
+                  interpolation='none', cmap=cmap, norm=norm)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.savefig(prefix + "_pattern.pdf")
+    plt.clf()
+    plt.close()
+

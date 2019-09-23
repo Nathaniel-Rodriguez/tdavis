@@ -1,11 +1,11 @@
-__all__ = ['find_patterns', 'build_gudhi_tree', 'CliqueComplex',
+__all__ = ['find_patterns', 'build_gudhi_tree', 'VRComplex',
            'ConcurrenceComplex', 'convert_edge_membership_to_node_membership',
            'IndependenceComplex']
 
 
 import gudhi
 import numpy as np
-import matplotlib.pyplot as plt
+from collections import Counter
 from tdavis.data_processing import *
 import linkcom
 import networkx as nx
@@ -22,23 +22,33 @@ def find_patterns(data: np.array):
             patterns[indices] += 1
         else:
             patterns[indices] = 1
+    print("Pattern distribution")
+    print("\tNum patterns:", len(patterns))
+    print("\tPattern frequency:")
+    for pattern, freq in patterns.items():
+        print(freq, len(pattern))
     return patterns
 
 
 def build_gudhi_tree(patterns):
+    print("building tree...")
     tree = gudhi.SimplexTree()
     for simplex, frequency in patterns.items():
         tree.insert(simplex, 1.0 / frequency)
+    print("tree built...")
     return tree
 
 
 class Complex:
-    def __init__(self, simplex_tree, homology_coeff_field=11):
+    def __init__(self, simplex_tree, homology_coeff_field=11,
+                 min_persistence=0.0):
         """
         :param homology_coeff_field: has to be prime int.
         """
         self.simplex_tree = simplex_tree
-        self.persistence = self.simplex_tree.persistence(homology_coeff_field)
+        print("calculating persistence...")
+        self.persistence = self.simplex_tree.persistence(homology_coeff_field,
+                                                         min_persistence)
 
     def plot_betti_distribution(self, filtration_range=None):
         if filtration_range is None:
@@ -55,10 +65,10 @@ class Complex:
     # just not do it, or just do community detection on the distance matrix
 
 
-class CliqueComplex(Complex):
+class VRComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
                  window_size=5, method="avg", max_edge_length=10,
-                 tree_dimension=None):
+                 tree_dimension=None, **kwargs):
         """
         :param data: a TxN matrix where T is the time dim and N is the variable
         dimension.
@@ -75,12 +85,12 @@ class CliqueComplex(Complex):
             simplex_tree = self.rips_complex.create_simplex_tree()
         else:
             simplex_tree = self.rips_complex.create_simplex_tree(tree_dimension)
-        super().__init__(simplex_tree)
+        super().__init__(simplex_tree, **kwargs)
 
 
 class ConcurrenceComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
-                 window_size=5, method="avg", threshold=0.5):
+                 window_size=5, method="avg", threshold=0.5, **kwargs):
         """
         :param data: a TxN matrix where T is the time dim and N is the variable
         dimension.
@@ -90,43 +100,97 @@ class ConcurrenceComplex(Complex):
             bin_time_series(
                 pre_process_layer_states(self._data, filter_lowest),
                     window_size, method), threshold)
-        super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data)))
+        super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data)),
+                         **kwargs)
 
 
-def convert_edge_membership_to_node_membership(n, edge_membership):
-    number_of_communities = len(set(edge_membership.values()))
-    node_membership_matrix = np.zeros((number_of_communities, n), dtype=bool)
+def convert_edge_membership_to_node_membership(graph, edge_membership,
+                                               min_com_size=4):
+    """
+    For linkcom, nodes will have membership in each community for which it
+    shares an edge.
+    :param graph: nx graph
+    :param edge_membership: dictionary of edge->community
+    :param min_com_size: minimum # of edges needed to make a community.
+    :return: CxN matrix
+    """
+    community_frequencies = Counter(edge_membership.values())
+    communities = [com for com, freq in community_frequencies.items()
+                   if freq > min_com_size]
+    print("Num non-trivial communities", len(communities))
+    print("Community distribution")
+    for com, freq in community_frequencies.items():
+        if freq > min_com_size:
+            print("com", com, "freq", freq)
+
+    community_index = {com: i for i, com in enumerate(communities)}
+    node_membership_matrix = np.zeros((len(communities),
+                                       nx.number_of_nodes(graph)),
+                                      dtype=bool)
     for edge, membership in edge_membership.items():
-        node_membership_matrix[edge[0], membership] = True
-        node_membership_matrix[edge[1], membership] = True
+        if membership in community_index:
+            node_membership_matrix[community_index[membership],
+                                   edge[0]] = True
+            node_membership_matrix[community_index[membership],
+                                   edge[1]] = True
 
     return node_membership_matrix
 
 
+def convert_edge_membership_to_edge_member_matrix(graph, edge_membership):
+    """
+    :param graph: nx graph
+    :param edge_membership: dictionary of edge->community
+    :return: CxE matrix
+    """
+    community_frequencies = Counter(edge_membership.values())
+    communities = [com for com, freq in community_frequencies.items()
+                   if freq > 1]
+    community_index = {com: i for i, com in enumerate(communities)}
+    edge_membership_matrix = np.zeros((len(communities),
+                                       nx.number_of_edges(graph)),
+                                      dtype=bool)
+    for i, edge in enumerate(graph.edges()):
+        if edge_membership[edge] in community_index:
+            edge_membership_matrix[community_index[edge_membership[edge]], i] = True
+
+    return edge_membership_matrix
+
+
 class IndependenceComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
-                 window_size=5, method='avg'):
+                 window_size=5, method='avg', threshold=0.0, **kwargs):
         self._data = data
         self._preprocessed_data = bin_time_series(
                 pre_process_layer_states(self._data, filter_lowest),
                 window_size, method)
-        self._correlation_matrix = np.abs(np.corrcoef(self._preprocessed_data,
-                                                      rowvar=False))
-        np.fill_diagonal(self._correlation_matrix, 0)
-        # TODO: look into determining going from correlation -> graph
-        # particularly concerning significance/thresholding
-
-        self.graph = nx.from_numpy_matrix(self._correlation_matrix,
-                                          created_using=nx.DiGraph())
+        self._matrix = np.abs(np.corrcoef(self._preprocessed_data,
+                                          rowvar=False))
+        np.fill_diagonal(self._matrix, 0)
+        self._matrix[self._matrix < threshold] = 0
+        self.graph = nx.from_numpy_matrix(self._matrix)
+        print("num nodes:", nx.number_of_nodes(self.graph),
+              "num edges:", nx.number_of_edges(self.graph))
         # keys=edges and values=community membership
-        edge_membership, _, _ = linkcom.cluster(g, is_weighted=True)
+        cluster_results = linkcom.cluster(self.graph, is_weighted=True)
+        self.edge_membership = cluster_results[0]
+        print('edge members', self.edge_membership)
         self._node_membership = convert_edge_membership_to_node_membership(
-            len(g), edge_membership)
+            self.graph, self.edge_membership)
         self._non_membership = ~self._node_membership
-        super().__init__(build_gudhi_tree(find_patterns(self._non_membership)))
+        self.write_gexf_to_file("test")
+        pattern_plot(self._non_membership, xlabel="com", ylabel="node")
+        super().__init__(build_gudhi_tree(find_patterns(self._non_membership)),
+                         **kwargs)
 
     def write_gexf_to_file(self, filename):
-        pass
-        # assign communities to nodes (not sure how gephi could handle it)
-        # assign communities to edges
-        # assign out-membership to nodes
+        community_frequencies = Counter(self.edge_membership.values())
+        communities = [com for com, freq in community_frequencies.items()
+                       if freq > 1]
+        community_index = {com: i for i, com in enumerate(communities)}
+        edge_comunities = {edge: {'community': community_index[self.edge_membership[edge]]}
+                           if self.edge_membership[edge] in community_index
+                           else {'community': -1}
+                           for edge in self.graph.edges()}
+        nx.set_edge_attributes(self.graph, edge_comunities)
+        nx.write_gexf(self.graph, filename + ".gexf")
