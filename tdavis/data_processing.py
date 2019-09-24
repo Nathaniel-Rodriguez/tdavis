@@ -10,7 +10,6 @@ import matplotlib as mpl
 
 # TODO: remove neurons with inactive downsteam neighbors
 
-
 def flatten_layer(layer_state):
     return layer_state.reshape(layer_state.shape[0], -1)
 

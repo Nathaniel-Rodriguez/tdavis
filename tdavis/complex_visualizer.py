@@ -11,7 +11,7 @@ import linkcom
 import networkx as nx
 
 
-def find_patterns(data: np.array):
+def find_patterns(data: np.array, verbose=False):
     """
     :param data: a TxN binary matrix
     """
@@ -22,11 +22,12 @@ def find_patterns(data: np.array):
             patterns[indices] += 1
         else:
             patterns[indices] = 1
-    print("Pattern distribution")
-    print("\tNum patterns:", len(patterns))
-    print("\tPattern frequency:")
-    for pattern, freq in patterns.items():
-        print(freq, len(pattern))
+    if verbose:
+        print("Pattern distribution")
+        print("\tNum patterns:", len(patterns))
+        print("\tPattern frequency:")
+        for pattern, freq in patterns.items():
+            print(freq, len(pattern))
     return patterns
 
 
@@ -49,6 +50,10 @@ class Complex:
         self.persistence = self.simplex_tree.persistence(
             kwargs.get('homology_coeff_field', 11),
             kwargs.get('min_persistence', 0.0))
+
+    def get_betti(self):
+        return [Counter([p[0] for p in self.persistence])[i]
+                for i in range(self.simplex_tree.dimension())]
 
     def plot_betti_distribution(self, filtration_range=None):
         if filtration_range is None:
@@ -77,14 +82,17 @@ class VRComplex(Complex):
         self._preprocessed_data = bin_time_series(
                 pre_process_layer_states(self._data, filter_lowest),
                 window_size, method)
-        self._distance_matrix = np.abs(np.corrcoef(self._preprocessed_data,
-                                                   rowvar=False))
+        self._distance_matrix = 1 - np.abs(np.corrcoef(self._preprocessed_data,
+                                                       rowvar=False))
         self.rips_complex = gudhi.RipsComplex(distance_matrix=self._distance_matrix,
                                               max_edge_length=max_edge_length)
         if tree_dimension is None:
             simplex_tree = self.rips_complex.create_simplex_tree()
         else:
             simplex_tree = self.rips_complex.create_simplex_tree(tree_dimension)
+        print("Complex of dimension", simplex_tree.dimension(),
+              'Simplices', simplex_tree.num_simplices(),
+              'Vertices', simplex_tree.num_vertices())
         super().__init__(simplex_tree, **kwargs)
 
 
