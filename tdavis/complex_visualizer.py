@@ -96,19 +96,34 @@ class VRComplex(Complex):
         super().__init__(simplex_tree, **kwargs)
 
 
+# class ConcurrenceComplex(Complex):
+#     def __init__(self, data: np.array, filter_lowest=0.2,
+#                  window_size=5, method="avg", threshold=0.5, **kwargs):
+#         """
+#         :param data: a TxN matrix where T is the time dim and N is the variable
+#         dimension.
+#         """
+#         self._data = data
+#         self._preprocessed_data = binarize_time_series(
+#             bin_time_series(
+#                 pre_process_layer_states(self._data, filter_lowest),
+#                     window_size, method), threshold)
+#         super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data,
+#                                                         kwargs.get("verbose", False))),
+#                          **kwargs)
+
 class ConcurrenceComplex(Complex):
     def __init__(self, data: np.array, filter_lowest=0.2,
-                 window_size=5, method="avg", threshold=0.5, **kwargs):
+                 window_size=5, method="max", threshold=0.5, **kwargs):
         """
         :param data: a TxN matrix where T is the time dim and N is the variable
         dimension.
         """
         self._data = data
-        self._preprocessed_data = binarize_time_series(
-            bin_time_series(
-                pre_process_layer_states(self._data, filter_lowest),
-                    window_size, method), threshold)
-        super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data)),
+        self._preprocessed_data = bin_time_series(
+            max_binary(self._data), window_size, method)
+        super().__init__(build_gudhi_tree(find_patterns(self._preprocessed_data,
+                                                        kwargs.get("verbose", False))),
                          **kwargs)
 
 

@@ -1,5 +1,6 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
-           'binarize_time_series', 'plot_state_distribution', 'pattern_plot']
+           'binarize_time_series', 'plot_state_distribution', 'pattern_plot',
+           'max_binary']
 
 
 import numpy as np
@@ -10,19 +11,30 @@ import matplotlib as mpl
 
 # TODO: remove neurons with inactive downsteam neighbors
 
+
+def max_binary(layer_state):
+    # difference time-series
+    differenced_states = layer_state[1:, :] - layer_state[-1:, :]
+    # calc variance of each neuron
+    variances = np.var(differenced_states, axis=0)
+    # remove no-variance neurons
+    active_indices = [i for i, v in enumerate(variances) if v > 0.00001]
+    filtered_layer_state = np.take(layer_state, active_indices, axis=1)
+
+    binary_layer_state = np.zeros((filtered_layer_state.shape[0],
+                                   filtered_layer_state.shape[1]), dtype=bool)
+    for t in range(filtered_layer_state.shape[0]):
+        max_index = np.argmax(filtered_layer_state[t])
+        binary_layer_state[t, max_index] = True
+
+    return binary_layer_state
+
+
 def flatten_layer(layer_state):
     return layer_state.reshape(layer_state.shape[0], -1)
 
 
-def pre_process_layer_states(layer_state, filter_lowest=0.2):
-    """
-    Differences the time-series, removes the neurons with low
-    variance and then rescales the rest.
-    :param layer_state: a TxN matrix where N is the number of neurons.
-    :param filter_lowest: remove lowest X percent AFTER neurons with
-    no variance are removed.
-    :return: a TxA matrix where A is the remaining number of neurons
-    """
+def _differenced_preprocessing(layer_state, filter_lowest=0.2):
     # difference time-series
     differenced_states = layer_state[1:, :] - layer_state[-1:, :]
 
@@ -45,6 +57,48 @@ def pre_process_layer_states(layer_state, filter_lowest=0.2):
     scaled_states = scaler.fit_transform(filtered_states)
     print("\tremaining states:", scaled_states.shape[1])
     return scaled_states
+
+
+def _preprocessing(layer_state, filter_lowest=0.2):
+    # difference time-series
+    differenced_states = layer_state[1:, :] - layer_state[-1:, :]
+
+    # calc variance of each neuron
+    variances = np.var(differenced_states, axis=0)
+    # remove no-variance neurons
+    active_indices = [i for i, v in enumerate(variances) if v > 0.00001]
+    print("removing...", len(variances) - len(active_indices),
+          " neurons for inactivity")
+    filtered_states = np.take(differenced_states, active_indices, axis=1)
+    filtered_layer_state = np.take(layer_state, active_indices, axis=1)
+    # remove low-variance neurons
+    variances = np.var(filtered_states, axis=0)
+    indices_l2g = np.argsort(variances)
+    chosen = indices_l2g[int(filter_lowest * len(indices_l2g)):]
+    print("removing...", len(variances) - len(chosen),
+          " neurons for low activity")
+    filtered_states = np.take(filtered_states, chosen, axis=1)
+    filtered_layer_state = np.take(filtered_layer_state, chosen, axis=1)
+    # standardize whole set
+    scaler = sk.preprocessing.StandardScaler()
+    scaled_states = scaler.fit_transform(filtered_layer_state)
+    print("\tremaining states:", scaled_states.shape[1])
+    return scaled_states
+
+
+def pre_process_layer_states(layer_state, filter_lowest=0.2, differenced=True):
+    """
+    Differences the time-series, removes the neurons with low
+    variance and then rescales the rest.
+    :param layer_state: a TxN matrix where N is the number of neurons.
+    :param filter_lowest: remove lowest X percent AFTER neurons with
+    no variance are removed.
+    :return: a TxA matrix where A is the remaining number of neurons
+    """
+    if differenced:
+        return _differenced_preprocessing(layer_state, filter_lowest)
+    else:
+        return _preprocessing(layer_state, filter_lowest)
 
 
 def bin_time_series(layer_state, window_size=5, method="avg"):
@@ -86,7 +140,8 @@ def binarize_time_series(layer_state, threshold, absolute=False):
         return sk.preprocessing.binarize(layer_state, threshold)
 
 
-def plot_state_distribution(layer, prefix="test", plot_min_max=True):
+def plot_state_distribution(layer, prefix="test", plot_min_max=True,
+                            png=False):
     """
     Makes a time series plot of the max/min/median/90%/10% quartile ranges
     :param layer: a TxN matrix, where N is the number of neurons
@@ -121,13 +176,16 @@ def plot_state_distribution(layer, prefix="test", plot_min_max=True):
         plt.plot(maxes, ls="dotted", marker="None", color="black", lw=1)
     plt.xlim(0, len(tops))
     plt.legend()
-    plt.savefig(prefix + "_state_distribution.pdf")
+    if png:
+        plt.savefig(prefix + "_state_distribution.png", dpi=300)
+    else:
+        plt.savefig(prefix + "_state_distribution.pdf")
     plt.clf()
     plt.close()
 
 
 def pattern_plot(layer, prefix="test", window=None, xlabel="time",
-                 ylabel="activation"):
+                 ylabel="activation", png=False):
     """
     :param layer: TxN activation matrix
     :param prefix: for file name
@@ -147,7 +205,9 @@ def pattern_plot(layer, prefix="test", window=None, xlabel="time",
                   interpolation='none', cmap=cmap, norm=norm)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    plt.savefig(prefix + "_pattern.pdf")
+    if png:
+        plt.savefig(prefix + "_pattern.png", dpi=300)
+    else:
+        plt.savefig(prefix + "_pattern.pdf")
     plt.clf()
     plt.close()
-
