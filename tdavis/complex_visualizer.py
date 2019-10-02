@@ -96,6 +96,8 @@ class VRComplex(Complex):
         super().__init__(simplex_tree, **kwargs)
 
 
+# good but it doesn't support output layer... should probably keep preprocessing
+# separate
 # class ConcurrenceComplex(Complex):
 #     def __init__(self, data: np.array, filter_lowest=0.2,
 #                  window_size=5, method="avg", threshold=0.5, **kwargs):
@@ -112,9 +114,10 @@ class VRComplex(Complex):
 #                                                         kwargs.get("verbose", False))),
 #                          **kwargs)
 
+# temporarily modified for output layer
 class ConcurrenceComplex(Complex):
-    def __init__(self, data: np.array, filter_lowest=0.2,
-                 window_size=5, method="max", threshold=0.5, **kwargs):
+    def __init__(self, data: np.array,
+                 window_size=5, method="max", **kwargs):
         """
         :param data: a TxN matrix where T is the time dim and N is the variable
         dimension.
