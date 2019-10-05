@@ -7,6 +7,21 @@ import numpy as np
 import sklearn as sk
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from scipy.special import rel_entr
+
+
+def jensenshannon(p, q, base=None):
+    p = np.asarray(p)
+    q = np.asarray(q)
+    p = p / np.sum(p, axis=0)
+    q = q / np.sum(q, axis=0)
+    m = (p + q) / 2.0
+    left = rel_entr(p, m)
+    right = rel_entr(q, m)
+    js = np.sum(left, axis=0) + np.sum(right, axis=0)
+    if base is not None:
+        js /= np.log(base)
+    return np.sqrt(js / 2.0)
 
 
 # TODO: remove neurons with inactive downsteam neighbors
