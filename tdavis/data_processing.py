@@ -1,6 +1,6 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
            'binarize_time_series', 'plot_state_distribution', 'pattern_plot',
-           'max_binary']
+           'max_binary', 'jensenshannon']
 
 
 import numpy as np
