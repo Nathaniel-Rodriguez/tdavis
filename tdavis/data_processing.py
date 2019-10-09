@@ -1,6 +1,6 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
            'binarize_time_series', 'plot_state_distribution', 'pattern_plot',
-           'max_binary', 'jensenshannon']
+           'max_binary', 'jensenshannon', 'individual_state_plots']
 
 
 import numpy as np
@@ -226,3 +226,13 @@ def pattern_plot(layer, prefix="test", window=None, xlabel="time",
         plt.savefig(prefix + "_pattern.pdf")
     plt.clf()
     plt.close()
+
+
+def individual_state_plots(history, layer, prefix="test"):
+    flat_layer = flatten_layer(history[layer])
+    processed_layer = pre_process_layer_states(flat_layer, 0, False)
+    for i in range(processed_layer.shape[1]):
+        plt.plot(processed_layer[:, i])
+        plt.savefig(str(i) + "_" + prefix + "_state_ts.png", dpi=300)
+        plt.close()
+        plt.clf()
