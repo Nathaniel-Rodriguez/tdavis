@@ -1,8 +1,10 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
            'binarize_time_series', 'plot_state_distribution', 'pattern_plot',
-           'max_binary', 'jensenshannon', 'individual_state_plots']
+           'max_binary', 'jensenshannon', 'individual_state_plots',
+           'embed_time_series', 'plot_embedding']
 
 
+from typing import Tuple
 import numpy as np
 import sklearn as sk
 import matplotlib.pyplot as plt
@@ -22,6 +24,48 @@ def jensenshannon(p, q, base=None):
     if base is not None:
         js /= np.log(base)
     return np.sqrt(js / 2.0)
+
+
+def embed_time_series(x: np.ndarray,
+                      tau: int,
+                      dimensions: int) -> np.ndarray:
+    """
+    :param x: 1-D time-series (length N)
+    :param tau: number of time-steps back for delay
+    :param dimensions: dimensionality of the embedding
+    :return: (T - dimensions*tau) x (dimensions)
+    """
+    embedding = np.zeros(shape=(len(x) - dimensions * tau, dimensions))
+    for dim in range(embedding.shape[1]):
+        embedding[:, dim] = x[dimensions * tau - dim * tau:len(x) - dim * tau]
+
+    return embedding
+
+
+def plot_embedding(embedding: np.ndarray,
+                   tau: int,
+                   dimensions: Tuple[int, int],
+                   prefix: str,
+                   as_png=False):
+    """
+    makes a plot of a time-series embedding
+    :param embedding: a 2D array, first dim is time, second is dim
+    :param tau: the delay size (for labelling)
+    :param dimensions: tuple of first dimension vs second dimension
+    :param prefix: filename prefix
+    :param as_png: whether to write as a png file (default: true)
+    """
+    plt.scatter(embedding[:, dimensions[0]],
+                embedding[:, dimensions[1]],
+                s=1.0)
+    plt.xlabel("x(t-" + str(dimensions[0] * tau) + ")")
+    plt.ylabel("x(t-" + str(dimensions[1] * tau) + ")")
+    if as_png:
+        plt.savefig(prefix + ".png", dpi=300)
+    else:
+        plt.savefig(prefix + ".pdf")
+    plt.clf()
+    plt.close()
 
 
 # TODO: remove neurons with inactive downsteam neighbors
