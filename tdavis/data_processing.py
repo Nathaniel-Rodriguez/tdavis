@@ -112,8 +112,11 @@ def _differenced_preprocessing(layer_state, filter_lowest=0.2):
           " neurons for low activity")
     filtered_states = np.take(filtered_states, chosen, axis=1)
     # standardize whole set
-    scaler = sk.preprocessing.StandardScaler()
-    scaled_states = scaler.fit_transform(filtered_states)
+    if filtered_states.shape[1] >= 1:
+        scaler = sk.preprocessing.StandardScaler()
+        scaled_states = scaler.fit_transform(filtered_states)
+    else:
+        scaled_states = filtered_states
     print("\tremaining states:", scaled_states.shape[1])
     return scaled_states
 
@@ -139,8 +142,11 @@ def _preprocessing(layer_state, filter_lowest=0.2):
     filtered_states = np.take(filtered_states, chosen, axis=1)
     filtered_layer_state = np.take(filtered_layer_state, chosen, axis=1)
     # standardize whole set
-    scaler = sk.preprocessing.StandardScaler()
-    scaled_states = scaler.fit_transform(filtered_layer_state)
+    if filtered_states.shape[1] >= 1:
+        scaler = sk.preprocessing.StandardScaler()
+        scaled_states = scaler.fit_transform(filtered_states)
+    else:
+        scaled_states = filtered_states
     print("\tremaining states:", scaled_states.shape[1])
     return scaled_states
 

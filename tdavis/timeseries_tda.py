@@ -20,7 +20,8 @@ def calc_persistence_diagrams(x: np.ndarray, maxdim=2, n_perm=None,
                               **kwargs) -> Union[Dict, np.ndarray]:
     """
     :param x: TxN
-    :param maxdim: maximum number of dimensions of simplex
+    :param maxdim: maximum number of dimensions of simplex (computes all lower
+    or equal to value) so maxdim=1 computes H0 and H1.
     :param n_perm: number of permutations of data to use for subsampling. It
     cuts out points that are fully within the filtration.
     :param metric: the distance metric to use for the VR complex filtration
