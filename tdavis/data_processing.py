@@ -1,7 +1,7 @@
 __all__ = ['flatten_layer', 'pre_process_layer_states', 'bin_time_series',
            'binarize_time_series', 'plot_state_distribution', 'pattern_plot',
            'max_binary', 'jensenshannon', 'individual_state_plots',
-           'embed_time_series', 'plot_embedding']
+           'embed_time_series', 'plot_embedding', 'layer_preprocessing']
 
 
 from typing import Tuple
@@ -144,9 +144,9 @@ def _preprocessing(layer_state, filter_lowest=0.2):
     # standardize whole set
     if filtered_states.shape[1] >= 1:
         scaler = sk.preprocessing.StandardScaler()
-        scaled_states = scaler.fit_transform(filtered_states)
+        scaled_states = scaler.fit_transform(filtered_layer_state)
     else:
-        scaled_states = filtered_states
+        scaled_states = filtered_layer_state
     print("\tremaining states:", scaled_states.shape[1])
     return scaled_states
 
@@ -164,6 +164,23 @@ def pre_process_layer_states(layer_state, filter_lowest=0.2, differenced=True):
         return _differenced_preprocessing(layer_state, filter_lowest)
     else:
         return _preprocessing(layer_state, filter_lowest)
+
+
+def layer_preprocessing(layer_state):
+    # difference time-series
+    differenced_states = layer_state[1:, :] - layer_state[-1:, :]
+
+    # calc variance of each neuron
+    variances = np.var(differenced_states, axis=0)
+    # remove no-variance neurons
+    active_indices = [i for i, v in enumerate(variances) if v > 0.00001]
+    filtered_layer_state = np.take(layer_state, active_indices, axis=1)
+    # if everything filtered out, then leave as is
+    if filtered_layer_state.shape[1] == 0:
+        filtered_layer_state = layer_state
+    scaler = sk.preprocessing.StandardScaler()
+    scaled_states = scaler.fit_transform(filtered_layer_state)
+    return scaled_states
 
 
 def bin_time_series(layer_state, window_size=5, method="avg"):
