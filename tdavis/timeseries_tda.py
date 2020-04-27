@@ -31,6 +31,10 @@ def calc_persistence_diagrams(x: np.ndarray, maxdim=2, n_perm=None,
     :param kwargs: any other arguments taken by ripser.
     :return: list of persistence diagrams
     """
+    # prevent exception throw if n_perm is more than the number of points
+    if (n_perm is not None) and (n_perm > x.shape[0]):
+        n_perm = x.shape[0]
+
     if full_out:
         return ripser(x, maxdim=maxdim, n_perm=n_perm, metric=metric,
                       **kwargs)
